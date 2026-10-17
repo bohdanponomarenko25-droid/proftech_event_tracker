@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="uk" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ProfTech Event Tracker</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+        }
+    </script>
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- html2pdf library for PDF export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(150, 150, 150, 0.2); border-radius: 9999px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(150, 150, 150, 0.4); }
+    </style>
+</head>
+<body class="h-full flex flex-col antialiased transition-colors duration-300 bg-neutral-100 text-neutral-900 dark:bg-neutral-950 dark:text-neutral-100 selection:bg-neutral-300 dark:selection:bg-neutral-700">
+
+    <header class="bg-white/80 dark:bg-black/80 backdrop-blur-md border-b border-neutral-200 dark:border-neutral-800/80 sticky top-0 z-30 transition-colors duration-300">
+        <div class="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div class="flex items-center space-x-3.5">
+                <div class="bg-neutral-200/60 dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-800 p-2.5 rounded-xl">
+                    <i class="fa-solid fa-calendar-check text-base text-neutral-800 dark:text-white"></i>
+                </div>
+                <div>
+                    <h1 class="text-sm font-semibold tracking-wide text-neutral-900 dark:text-white flex items-center gap-2">
+                        PROFTECH <span class="text-xs uppercase tracking-widest px-2 py-0.5 bg-neutral-200/70 dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-800 text-neutral-600 dark:text-neutral-400 rounded-md font-normal">Tracker</span>
+                    </h1>
+                    <p class="text-xs text-neutral-500 dark:text-neutral-400 font-light">Система обліку та статусів учасників івентів</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-3 w-full sm:w-auto justify-end">
+                <!-- Theme Toggle Button -->
+                <button onclick="toggleTheme()" class="bg-neutral-200/60 dark:bg-neutral-900 hover:bg-neutral-300 dark:hover:bg-neutral-800 border border-neutral-300 dark:border-neutral-800 text-neutral-800 dark:text-neutral-200 p-2.5 rounded-xl transition flex items-center justify-center text-xs" title="Змінити тему">
+                    <i id="themeIcon" class="fa-solid fa-moon text-sm"></i>
+                </button>
+                <button onclick="openEventModal()" class="bg-neutral-900 hover:bg-neutral-800 dark:bg-white dark:hover:bg-neutral-200 text-white dark:text-neutral-950 font-medium px-4 py-2.5 rounded-xl shadow-sm transition flex items-center gap-2 text-xs tracking-wide">
+                    <i class="fa-solid fa-plus"></i> Створити івент
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 py-6 sm:px-6 lg:px-8 grid grid-cols-1 lg:grid-cols-4 gap-6 overflow-hidden">
+        
+        <!-- Sidebar: Event List -->
+        <div class="lg:col-span-1 bg-white dark:bg-neutral-900/60 border border-neutral-200 dark:border-neutral-800/80 rounded-2xl flex flex-col h-[calc(100vh-160px)] overflow-hidden backdrop-blur-md shadow-sm transition-colors duration-300">
+            <div class="p-4 border-b border-neutral-200 dark:border-neutral-800/80 bg-neutral-50 dark:bg-neutral-900/40 flex justify-between items-center">
+                <h2 class="font-medium text-neutral-600 dark:text-neutral-300 text-xs uppercase tracking-wider flex items-center gap-2">
+                    <i class="fa-solid fa-calendar-days text-neutral-800 dark:text-white"></i> Ваші івенти
+                </h2>
+                <span id="eventCountBadge" class="bg-neutral-200 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 text-neutral-800 dark:text-white text-[11px] font-semibold px-2 py-0.5 rounded-md">0</span>
+            </div>
+            <div id="eventsListContainer" class="flex-1 overflow-y-auto p-3 space-y-2.5">
+                <!-- Dynamically populated event items -->
+            </div>
+        </div>
+
+        <!-- Main Content: Active Event Details & Participants -->
+        <div class="lg:col-span-3 bg-white dark:bg-neutral-900/60 border border-neutral-200 dark:border-neutral-800/80 rounded-2xl flex flex-col h-[calc(100vh-160px)] overflow-hidden backdrop-blur-md shadow-sm transition-colors duration-300">
+            <div id="activeEventWrapper" class="flex-1 flex flex-col overflow-hidden">
+                <!-- Default empty state -->
+                <div class="m-auto text-center p-8">
+                    <div class="w-16 h-16 bg-neutral-100 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 text-neutral-400 rounded-2xl flex items-center justify-center mx-auto mb-4 text-xl shadow-inner">
+                        <i class="fa-regular fa-folder-open"></i>
+                    </div>
+                    <h3 class="text-base font-medium text-neutral-800 dark:text-neutral-200">Жодного івенту не обрано</h3>
+                    <p class="text-xs text-neutral-500 dark:text-neutral-400 mt-1 max-w-sm font-light">Виберіть івент зі списку зліва або створіть новий, щоб почати керувати участю.</p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div id="eventModal" class="fixed inset-0 bg-neutral-950/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl shadow-2xl max-w-md w-full overflow-hidden transition-colors duration-300">
+            <div class="p-5 border-b border-neutral-200 dark:border-neutral-800 flex justify-between items-center bg-neutral-50 dark:bg-neutral-900/60">
+                <h3 class="font-medium text-neutral-900 dark:text-white text-sm tracking-wide flex items-center gap-2">
+                    <i class="fa-solid fa-calendar-plus text-neutral-500"></i> Новий івент
+                </h3>
+                <button onclick="closeEventModal()" class="text-neutral-400 hover:text-neutral-900 dark:hover:text-white p-1.5 rounded-lg transition">
+                    <i class="fa-solid fa-xmark text-base"></i>
+                </button>
+            </div>
+            <form id="createEventForm" onsubmit="handleCreateEvent(event)" class="p-5 space-y-4">
+                <div>
+                    <label class="block text-[11px] font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-widest mb-1.5">Назва івенту</label>
+                    <input type="text" id="eventNameInput" required placeholder="Наприклад: ProfTech Meetup" class="w-full px-3.5 py-2.5 rounded-xl bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 text-neutral-900 dark:text-white placeholder-neutral-400 dark:placeholder-neutral-600 focus:outline-none focus:border-neutral-500 dark:focus:border-white text-xs transition">
+                </div>
+                <div>
+                    <label class="block text-[11px] font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-widest mb-1.5">Дата проведення</label>
+                    <input type="date" id="eventDateInput" required class="w-full px-3.5 py-2.5 rounded-xl bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 text-neutral-900 dark:text-white focus:outline-none focus:border-neutral-500 dark:focus:border-white text-xs transition">
+                </div>
+                <div>
+                    <label class="block text-[11px] font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-widest mb-1.5">Опис або нотатки (необов'язково)</label>
+                    <textarea id="eventDescInput" rows="2" placeholder="Короткий опис чи деталі..." class="w-full px-3.5 py-2.5 rounded-xl bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 text-neutral-900 dark:text-white placeholder-neutral-400 dark:placeholder-neutral-600 focus:outline-none focus:border-neutral-500 dark:focus:border-white text-xs transition resize-none"></textarea>
+                </div>
+                <div class="flex justify-end gap-3 pt-3">
+                    <button type="button" onclick="closeEventModal()" class="px-4 py-2 text-xs font-medium text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition">Скасувати</button>
+                    <button type="submit" class="px-5 py-2 text-xs font-medium bg-neutral-900 hover:bg-neutral-800 dark:bg-white dark:hover:bg-neutral-200 text-white dark:text-neutral-950 rounded-xl transition shadow-sm">Створити</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="participantModal" class="fixed inset-0 bg-neutral-950/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl shadow-2xl max-w-md w-full overflow-hidden transition-colors duration-300">
+            <div class="p-5 border-b border-neutral-200 dark:border-neutral-800 flex justify-between items-center bg-neutral-50 dark:bg-neutral-900/60">
+                <h3 class="font-medium text-neutral-900 dark:text-white text-sm tracking-wide flex items-center gap-2">
+                    <i class="fa-solid fa-user-plus text-neutral-500"></i> Додати учасника
+                </h3>
+                <button onclick="closeParticipantModal()" class="text-neutral-400 hover:text-neutral-900 dark:hover:text-white p-1.5 rounded-lg transition">
+                    <i class="fa-solid fa-xmark text-base"></i>
+                </button>
+            </div>
+            <form id="createParticipantForm" onsubmit="handleCreateParticipant(event)" class="p-5 space-y-4">
+                <div>
+                    <label class="block text-[11px] font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-widest mb-1.5">ПІБ Учасника</label>
+                    <input type="text" id="partNameInput" placeholder="Іван Петренко" class="w-full px-3.5 py-2.5 rounded-xl bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 text-neutral-900 dark:text-white placeholder-neutral-400 dark:placeholder-neutral-600 focus:outline-none focus:border-neutral-500 dark:focus:border-white text-xs transition">
+                </div>
+                <div>
+                    <label class="block text-[11px] font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-widest mb-1.5">Номер телефону</label>
+                    <input type="text" id="partPhoneInput" placeholder="+380 50 123 45 67" class="w-full px-3.5 py-2.5 rounded-xl bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 text-neutral-900 dark:text-white placeholder-neutral-400 dark:placeholder-neutral-600 focus:outline-none focus:border-neutral-500 dark:focus:border-white text-xs transition">
+                </div>
+                <div>
+                    <label class="block text-[11px] font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-widest mb-1.5">Початковий статус</label>
+                    <select id="partStatusInput" class="w-full px-3.5 py-2.5 rounded-xl bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 text-neutral-900 dark:text-white focus:outline-none focus:border-neutral-500 dark:focus:border-white text-xs transition">
+                        <option value="планує бути офлайн">планує бути офлайн</option>
+                        <option value="планує бути онлайн">планує бути онлайн</option>
+                        <option value="недозвон">недозвон</option>
+                        <option value="некоректний номер">некоректний номер</option>
+                        <option value="не буде">не буде</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-[11px] font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-widest mb-1.5">Коментар</label>
+                    <input type="text" id="partCommentInput" placeholder="Додаткова інформація..." class="w-full px-3.5 py-2.5 rounded-xl bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 text-neutral-900 dark:text-white placeholder-neutral-400 dark:placeholder-neutral-600 focus:outline-none focus:border-neutral-500 dark:focus:border-white text-xs transition">
+                </div>
+                <div class="flex justify-end gap-3 pt-3">
+                    <button type="button" onclick="closeParticipantModal()" class="px-4 py-2 text-xs font-medium text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition">Скасувати</button>
+                    <button type="submit" class="px-5 py-2 text-xs font-medium bg-neutral-900 hover:bg-neutral-800 dark:bg-white dark:hover:bg-neutral-200 text-white dark:text-neutral-950 rounded-xl transition shadow-sm">Додати</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const STORAGE_KEY = 'proftech_events_tracker_v3';
+        const THEME_KEY = 'proftech_theme_mode';
+
+        let state = {
+            events: [],
+            activeEventId: null,
+            filterStatus: 'all',
+            searchQuery: '',
+            darkMode: true
+        };
+
+        const statusConfig = {
+            'планує бути офлайн': { label: 'Офлайн', bg: 'bg-neutral-900 text-white border-neutral-900 dark:bg-white dark:text-neutral-950 dark:border-white', dot: 'bg-emerald-400 dark:bg-emerald-600', icon: 'fa-user-group' },
+            'планує бути онлайн': { label: 'Онлайн', bg: 'bg-neutral-800 text-white border-neutral-800 dark:bg-neutral-200 dark:text-neutral-900 dark:border-neutral-200', dot: 'bg-cyan-400 dark:bg-cyan-600', icon: 'fa-globe' },
+            'недозвон': { label: 'Недозвон', bg: 'bg-neutral-200 text-neutral-800 border-neutral-300 dark:bg-neutral-800 dark:text-neutral-200 dark:border-neutral-700', dot: 'bg-amber-400 dark:bg-amber-500', icon: 'fa-phone-slash' },
+            'некоректний номер': { label: 'Некор. номер', bg: 'bg-neutral-200 text-neutral-700 border-neutral-300 dark:bg-neutral-900 dark:text-neutral-400 dark:border-neutral-800', dot: 'bg-orange-400 dark:bg-orange-500', icon: 'fa-triangle-exclamation' },
+            'не буде': { label: 'Не буде', bg: 'bg-neutral-100 text-neutral-500 border-neutral-200 dark:bg-neutral-950 dark:text-neutral-500 dark:border-neutral-800/80', dot: 'bg-rose-400 dark:bg-rose-600', icon: 'fa-circle-xmark' }
+        };
+
+        window.addEventListener('DOMContentLoaded', () => {
+            initTheme();
+            loadFromStorage();
+            renderEventsList();
+            if (state.events.length > 0 && !state.activeEventId) {
+                selectEvent(state.events[0].id);
+            } else if (state.activeEventId) {
+                selectEvent(state.activeEventId);
+            }
+        });
+
+        // Theme management
+        function initTheme() {
+            const savedTheme = localStorage.getItem(THEME_KEY);
+            if (savedTheme) {
+                state.darkMode = savedTheme === 'dark';
+            } else {
+                state.darkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            }
+            applyTheme();
+        }
+
+        function toggleTheme() {
+            state.darkMode = !state.darkMode;
+            localStorage.setItem(THEME_KEY, state.darkMode ? 'dark' : 'light');
+            applyTheme();
+            renderActiveEvent(); // Re-render to update badge contrast styling
+            renderEventsList();
+        }
+
+        function applyTheme() {
+            const root = document.documentElement;
+            const themeIcon = document.getElementById('themeIcon');
+            if (state.darkMode) {
+                root.classList.add('dark');
+                if (themeIcon) {
+                    themeIcon.className = 'fa-solid fa-sun text-sm text-amber-400';
+                }
+            } else {
+                root.classList.remove('dark');
+                if (themeIcon) {
+                    themeIcon.className = 'fa-solid fa-moon text-sm text-neutral-700';
+                }
+            }
+        }
+
+        function saveToStorage() {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(state.events));
+        }
+
+        function loadFromStorage() {
+            const data = localStorage.getItem(STORAGE_KEY);
+            if (data) {
+                try {
+                    state.events = JSON.parse(data);
+                    // Migrate old 'планує бути' to 'планує бути офлайн' if needed
+                    state.events.forEach(ev => {
+                        ev.participants.forEach(p => {
+                            if (p.status === 'планує бути') p.status = 'планує бути офлайн';
+                        });
+                    });
+                } catch (e) {
+                    console.error("Error loading data", e);
+                    state.events = [];
+                }
+            } else {
+                state.events = [
+                    {
+                        id: 'demo-1',
+                        title: 'ProfTech Meetup #1',
+                        date: new Date().toISOString().split('T')[0],
+                        description: 'Зустріч спільноти та розбір кейсів.',
+                        participants: [
+                            { id: 'p1', name: 'Олександр Шевченко', phone: '+380671112233', status: 'планує бути офлайн', comment: 'Підтвердив участь в офісі' },
+                            { id: 'p2', name: 'Олена Ступак', phone: '+380635554433', status: 'планує бути онлайн', comment: 'Буде по Zoom' },
+                            { id: 'p3', name: 'Марія Коваль', phone: '+380509998877', status: 'недозвон', comment: 'Спробувати о 15:00' },
+                            { id: 'p4', name: 'Андрій Мельник', phone: '+380930001122', status: 'некоректний номер', comment: 'Не існує' },
+                            { id: 'p5', name: 'Ірина Бондар', phone: '+380634445566', status: 'не буде', comment: 'Не зможе прийти' }
+                        ]
+                    }
+                ];
+                state.activeEventId = 'demo-1';
+                saveToStorage();
+            }
+        }
+
+        // Modal Controls
+        function openEventModal() {
+            document.getElementById('eventModal').classList.remove('hidden');
+            document.getElementById('eventNameInput').value = '';
+            document.getElementById('eventDateInput').value = new Date().toISOString().split('T')[0];
+            document.getElementById('eventDescInput').value = '';
+        }
+        function closeEventModal() {
+            document.getElementById('eventModal').classList.add('hidden');
+        }
+
+        function openParticipantModal() {
+            if (!state.activeEventId) return;
+            document.getElementById('participantModal').classList.remove('hidden');
+            document.getElementById('partNameInput').value = '';
+            document.getElementById('partPhoneInput').value = '';
+            document.getElementById('partCommentInput').value = '';
+            document.getElementById('partStatusInput').value = 'планує бути офлайн';
+        }
+        function closeParticipantModal() {
+            document.getElementById('participantModal').classList.add('hidden');
+        }
+
+        // Event handling
+        function handleCreateEvent(e) {
+            e.preventDefault();
+            const title = document.getElementById('eventNameInput').value.trim();
+            const date = document.getElementById('eventDateInput').value;
+            const description = document.getElementById('eventDescInput').value.trim();
+
+            const newEvent = {
+                id: 'evt_' + Date.now(),
+                title,
+                date,
+                description,
+                participants: []
+            };
+
+            state.events.unshift(newEvent);
+            saveToStorage();
+            closeEventModal();
+            selectEvent(newEvent.id);
+            renderEventsList();
+        }
+
+        function deleteEvent(eventId, e) {
+            e.stopPropagation();
+            if (!confirm('Ви дійсно хочете видалити цей івент та всіх пов\'язаних учасників?')) return;
+            state.events = state.events.filter(ev => ev.id !== eventId);
+            saveToStorage();
+            if (state.activeEventId === eventId) {
+                state.activeEventId = state.events.length > 0 ? state.events[0].id : null;
+            }
+            renderEventsList();
+            if (state.activeEventId) {
+                selectEvent(state.activeEventId);
+            } else {
+                document.getElementById('activeEventWrapper').innerHTML = `
+                    <div class="m-auto text-center p-8">
+                        <div class="w-16 h-16 bg-neutral-100 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 text-neutral-400 rounded-2xl flex items-center justify-center mx-auto mb-4 text-xl">
+                            <i class="fa-regular fa-folder-open"></i>
+                        </div>
+                        <h3 class="text-base font-medium text-neutral-800 dark:text-neutral-200">Жодного івенту не обрано</h3>
+                        <p class="text-xs text-neutral-500 dark:text-neutral-400 mt-1 max-w-sm">Створіть новий івент щоб розпочати роботу.</p>
+                    </div>`;
+            }
+        }
+
+        function selectEvent(eventId) {
+            state.activeEventId = eventId;
+            state.filterStatus = 'all';
+            state.searchQuery = '';
+            renderEventsList();
+            renderActiveEvent();
+        }
+
+        // Participant handling
+        function handleCreateParticipant(e) {
+            e.preventDefault();
+            const activeEvent = state.events.find(ev => ev.id === state.activeEventId);
+            if (!activeEvent) return;
+
+            const name = document.getElementById('partNameInput').value.trim() || 'Без імені';
+            const phone = document.getElementById('partPhoneInput').value.trim() || '-';
+            const status = document.getElementById('partStatusInput').value;
+            const comment = document.getElementById('partCommentInput').value.trim();
+
+            const newPart = {
+                id: 'part_' + Date.now(),
+                name,
+                phone,
+                status,
+                comment
+            };
+
+            activeEvent.participants.push(newPart);
+            saveToStorage();
+            closeParticipantModal();
+            renderActiveEvent();
+            renderEventsList();
+        }
+
+        function updateParticipantStatus(participantId, newStatus) {
+            const activeEvent = state.events.find(ev => ev.id === state.activeEventId);
+            if (!activeEvent) return;
+
+            const part = activeEvent.participants.find(p => p.id === participantId);
+            if (part) {
+                part.status = newStatus;
+                saveToStorage();
+                renderActiveEvent();
+                renderEventsList();
+            }
+        }
+
+        function deleteParticipant(participantId) {
+            const activeEvent = state.events.find(ev => ev.id === state.activeEventId);
+            if (!activeEvent) return;
+
+            activeEvent.participants = activeEvent.participants.filter(p => p.id !== participantId);
+            saveToStorage();
+            renderActiveEvent();
+            renderEventsList();
+        }
+
+        // Renders
+        function renderEventsList() {
+            const container = document.getElementById('eventsListContainer');
+            document.getElementById('eventCountBadge').innerText = state.events.length;
+
+            if (state.events.length === 0) {
+                container.innerHTML = `<div class="text-center py-8 text-xs text-neutral-400 font-light">Список івентів порожній</div>`;
+                return;
+            }
+
+            container.innerHTML = state.events.map(ev => {
+                const isActive = ev.id === state.activeEventId;
+                const totalCount = ev.participants.length;
+                const activeCount = ev.participants.filter(p => p.status === 'планує бути офлайн' || p.status === 'планує бути онлайн').length;
+
+                return `
+                    <div onclick="selectEvent('${ev.id}')" class="group relative p-3.5 rounded-xl border transition cursor-pointer ${isActive ? 'bg-neutral-100 dark:bg-neutral-800/80 border-neutral-300 dark:border-neutral-700 shadow-sm' : 'bg-transparent border-neutral-200 dark:border-neutral-800/60 hover:border-neutral-300 dark:hover:border-neutral-700 hover:bg-neutral-50 dark:hover:bg-neutral-800/40'}">
+                        <div class="flex justify-between items-start gap-2">
+                            <h3 class="font-medium text-xs text-neutral-800 dark:text-neutral-200 line-clamp-1">${escapeHtml(ev.title)}</h3>
+                            <button onclick="deleteEvent('${ev.id}', event)" class="text-neutral-400 hover:text-neutral-800 dark:hover:text-white p-1 rounded transition opacity-0 group-hover:opacity-100">
+                                <i class="fa-solid fa-trash-can text-xs"></i>
+                            </button>
+                        </div>
+                        <div class="flex items-center gap-2 mt-2 text-[11px] text-neutral-500 dark:text-neutral-400">
+                            <span><i class="fa-regular fa-calendar mr-1"></i>${ev.date}</span>
+                            <span>•</span>
+                            <span class="text-neutral-700 dark:text-neutral-300 font-medium">${activeCount}/${totalCount} приєднаються</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function renderActiveEvent() {
+            const activeEvent = state.events.find(ev => ev.id === state.activeEventId);
+            if (!activeEvent) return;
+
+            const total = activeEvent.participants.length;
+            const counts = {
+                'планує бути офлайн': activeEvent.participants.filter(p => p.status === 'планує бути офлайн').length,
+                'планує бути онлайн': activeEvent.participants.filter(p => p.status === 'планує бути онлайн').length,
+                'недозвон': activeEvent.participants.filter(p => p.status === 'недозвон').length,
+                'некоректний номер': activeEvent.participants.filter(p => p.status === 'некоректний номер').length,
+                'не буде': activeEvent.participants.filter(p => p.status === 'не буде').length
+            };
+
+            let filtered = activeEvent.participants.filter(p => {
+                const matchesStatus = state.filterStatus === 'all' || p.status === state.filterStatus;
+                const matchesSearch = p.name.toLowerCase().includes(state.searchQuery.toLowerCase()) || p.phone.includes(state.searchQuery);
+                return matchesStatus && matchesSearch;
+            });
+
+            const wrapper = document.getElementById('activeEventWrapper');
+            wrapper.innerHTML = `
+                <div class="p-5 border-b border-neutral-200 dark:border-neutral-800/80 bg-neutral-50/50 dark:bg-neutral-900/40 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div>
+                <div class="flex items-center gap-2 text-[11px] text-neutral-500 dark:text-neutral-400 font-medium uppercase tracking-widest mb-1">
+                    <span><i class="fa-regular fa-calendar-days mr-1"></i> ${activeEvent.date}</span>
+                </div>
+                <h2 class="text-lg font-semibold text-neutral-900 dark:text-white tracking-wide">${escapeHtml(activeEvent.title)}</h2>
+                ${activeEvent.description ? `<p class="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5 font-light">${escapeHtml(activeEvent.description)}</p>` : ''}
+            </div>
+            <div class="flex items-center gap-2.5 flex-wrap">
+                <button onclick="exportEventPDF()" class="bg-white dark:bg-neutral-900 hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-800 dark:text-neutral-200 border border-neutral-300 dark:border-neutral-700 font-medium px-4 py-2 rounded-xl text-xs shadow-sm transition flex items-center gap-2 tracking-wide">
+                    <i class="fa-solid fa-file-pdf text-rose-500"></i> Експорт у PDF
+                </button>
+                <button onclick="openParticipantModal()" class="bg-neutral-900 hover:bg-neutral-800 dark:bg-white dark:hover:bg-neutral-200 text-white dark:text-neutral-950 font-medium px-4 py-2 rounded-xl text-xs shadow-sm transition flex items-center gap-2 tracking-wide">
+                    <i class="fa-solid fa-user-plus"></i> Додати учасника
+                </button>
+            </div>
+        </div>
+
+        <div class="p-4 border-b border-neutral-200 dark:border-neutral-800/80 grid grid-cols-2 sm:grid-cols-6 gap-2 bg-neutral-100/50 dark:bg-neutral-950/40">
+                    <button onclick="setStatusFilter('all')" class="p-2.5 rounded-xl border text-left transition ${state.filterStatus === 'all' ? 'bg-neutral-900 text-white border-neutral-900 dark:bg-white dark:text-neutral-950 dark:border-white font-medium shadow-sm' : 'bg-white dark:bg-neutral-900/50 border-neutral-200 dark:border-neutral-800 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800/60'}">
+                        <div class="text-[9px] uppercase tracking-wider opacity-70">Всі</div>
+                        <div class="text-sm font-bold mt-0.5">${total}</div>
+                    </button>
+                    <button onclick="setStatusFilter('планує бути офлайн')" class="p-2.5 rounded-xl border text-left transition ${state.filterStatus === 'планує бути офлайн' ? 'bg-neutral-900 text-white border-neutral-900 dark:bg-white dark:text-neutral-950 dark:border-white font-medium shadow-sm' : 'bg-white dark:bg-neutral-900/50 border-neutral-200 dark:border-neutral-800 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800/60'}">
+                        <div class="text-[9px] uppercase tracking-wider opacity-70">Офлайн</div>
+                        <div class="text-sm font-bold mt-0.5">${counts['планує бути офлайн']}</div>
+                    </button>
+                    <button onclick="setStatusFilter('планує бути онлайн')" class="p-2.5 rounded-xl border text-left transition ${state.filterStatus === 'планує бути онлайн' ? 'bg-neutral-800 text-white border-neutral-700 dark:bg-neutral-700 dark:text-white dark:border-neutral-600 font-medium shadow-sm' : 'bg-white dark:bg-neutral-900/50 border-neutral-200 dark:border-neutral-800 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800/60'}">
+                        <div class="text-[9px] uppercase tracking-wider opacity-70">Онлайн</div>
+                        <div class="text-sm font-bold mt-0.5">${counts['планує бути онлайн']}</div>
+                    </button>
+                    <button onclick="setStatusFilter('недозвон')" class="p-2.5 rounded-xl border text-left transition ${state.filterStatus === 'недозвон' ? 'bg-neutral-800 text-white border-neutral-700 dark:bg-neutral-700 dark:text-white dark:border-neutral-600 font-medium shadow-sm' : 'bg-white dark:bg-neutral-900/50 border-neutral-200 dark:border-neutral-800 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-800/60'}">
+                        <div class="text-[9px] uppercase tracking-wider opacity-70">Недозвон</div>
+                        <div class="text-sm font-bold mt-0.5">${counts['недозвон']}</div>
+                    </button>
+                    <button onclick="setStatusFilter('некоректний номер')" class="p-2.5 rounded-xl border text-left transition ${state.filterStatus === 'некоректний номер' ? 'bg-neutral-800 text-white border-neutral-700 dark:bg-neutral-700 dark:text-white dark:border-neutral-600 font-medium shadow-sm' : 'bg-white dark:bg-neutral-900/50 border-neutral-200 dark:border-neutral-800 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-800/60'}">
+                        <div class="text-[9px] uppercase tracking-wider opacity-70">Некор. номер</div>
+                        <div class="text-sm font-bold mt-0.5">${counts['некоректний номер']}</div>
+                    </button>
+                    <button onclick="setStatusFilter('не буде')" class="p-2.5 col-span-2 sm:col-span-1 rounded-xl border text-left transition ${state.filterStatus === 'не буде' ? 'bg-neutral-800 text-white border-neutral-700 dark:bg-neutral-800 dark:text-white dark:border-neutral-700 font-medium shadow-sm' : 'bg-white dark:bg-neutral-900/50 border-neutral-200 dark:border-neutral-800 text-neutral-500 hover:bg-neutral-50 dark:hover:bg-neutral-800/60'}">
+                        <div class="text-[9px] uppercase tracking-wider opacity-70">Не буде</div>
+                        <div class="text-sm font-bold mt-0.5">${counts['не буде']}</div>
+                    </button>
+                </div>
+
+                <div class="px-4 py-3 border-b border-neutral-200 dark:border-neutral-800/80 flex items-center justify-between gap-4 bg-white/50 dark:bg-neutral-900/20">
+                    <div class="relative flex-1 max-w-md">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400 text-xs"></i>
+                        <input type="text" oninput="handleSearch(this.value)" value="${state.searchQuery}" placeholder="Шукати за ім'ям або телефоном..." class="w-full pl-9 pr-4 py-2 rounded-xl bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:border-neutral-500 dark:focus:border-neutral-600 text-xs transition">
+                    </div>
+                    <div class="text-xs text-neutral-500 font-light">
+                        Показано: <span class="font-medium text-neutral-800 dark:text-neutral-300">${filtered.length}</span> з ${total}
+                    </div>
+                </div>
+
+                <div class="flex-1 overflow-y-auto">
+                    ${filtered.length === 0 ? `
+                        <div class="text-center py-16 text-neutral-400">
+                            <i class="fa-regular fa-user text-3xl mb-2 opacity-40"></i>
+                            <p class="text-xs font-light">Учасників не знайдено</p>
+                        </div>
+                    ` : `
+                        <div class="divide-y divide-neutral-200 dark:divide-neutral-800/60">
+                            ${filtered.map(p => {
+                                const cfg = statusConfig[p.status] || statusConfig['планує бути офлайн'];
+                                return `
+                                    <div class="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-neutral-50 dark:hover:bg-neutral-900/40 transition">
+                                        <div class="space-y-1">
+                    <div class="flex items-center gap-2.5">
+                        <span class="font-medium text-sm text-neutral-900 dark:text-white">${escapeHtml(p.name)}</span>
+                        <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-[11px] font-medium border ${cfg.bg}">
+                            <span class="w-1.5 h-1.5 rounded-full ${cfg.dot}"></span>
+                            ${cfg.label}
+                        </span>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-3 text-xs text-neutral-500 dark:text-neutral-400 font-light">
+                        <span><i class="fa-solid fa-phone mr-1 text-neutral-400"></i>${escapeHtml(p.phone)}</span>
+                        ${p.comment ? `<span class="bg-neutral-100 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 px-2 py-0.5 rounded text-neutral-700 dark:text-neutral-300 text-[11px]"><i class="fa-regular fa-comment mr-1 opacity-60"></i>${escapeHtml(p.comment)}</span>` : ''}
+                    </div>
+                </div>
+                <div class="flex items-center gap-2 justify-end">
+                    <select onchange="updateParticipantStatus('${p.id}', this.value)" class="text-xs font-medium px-3 py-1.5 rounded-xl bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 text-neutral-800 dark:text-neutral-200 focus:outline-none focus:border-neutral-500 dark:focus:border-neutral-600 cursor-pointer shadow-sm">
+                        <option value="планує бути офлайн" ${p.status === 'планує бути офлайн' ? 'selected' : ''}>Офлайн</option>
+                        <option value="планує бути онлайн" ${p.status === 'планує бути онлайн' ? 'selected' : ''}>Онлайн</option>
+                        <option value="недозвон" ${p.status === 'недозвон' ? 'selected' : ''}>Недозвон</option>
+                        <option value="некоректний номер" ${p.status === 'некоректний номер' ? 'selected' : ''}>Некоректний номер</option>
+                        <option value="не буде" ${p.status === 'не буде' ? 'selected' : ''}>Не буде</option>
+                    </select>
+                    <button onclick="deleteParticipant('${p.id}')" class="text-neutral-400 hover:text-neutral-800 dark:hover:text-white p-2 rounded-xl hover:bg-neutral-200 dark:hover:bg-neutral-800 transition" title="Видалити учасника">
+                        <i class="fa-solid fa-trash-can text-xs"></i>
+                    </button>
+                </div>
+            </div>
+        `;
+    }).join('')}
+</div>
+`
+            }
+        </div>
+    `;
+}
+
+function setStatusFilter(status) {
+    state.filterStatus = status;
+    renderActiveEvent();
+}
+
+function handleSearch(query) {
+    state.searchQuery = query;
+    renderActiveEvent();
+}
+
+// Export Event to PDF
+function exportEventPDF() {
+    const activeEvent = state.events.find(ev => ev.id === state.activeEventId);
+    if (!activeEvent) return;
+
+    const total = activeEvent.participants.length;
+    const counts = {
+        'планує бути офлайн': activeEvent.participants.filter(p => p.status === 'планує бути офлайн').length,
+        'планує бути онлайн': activeEvent.participants.filter(p => p.status === 'планує бути онлайн').length,
+        'недозвон': activeEvent.participants.filter(p => p.status === 'недозвон').length,
+        'некоректний номер': activeEvent.participants.filter(p => p.status === 'некоректний номер').length,
+        'не буде': activeEvent.participants.filter(p => p.status === 'не буде').length
+    };
+
+    // Create a clean temporary element for PDF generation
+    const printContainer = document.createElement('div');
+    printContainer.style.padding = '30px';
+    printContainer.style.fontFamily = "'Inter', sans-serif";
+    printContainer.style.color = '#111';
+    printContainer.style.backgroundColor = '#fff';
+    printContainer.style.width = '700px';
+    printContainer.style.boxSizing = 'border-box';
+
+    let participantsRows = '';
+    if (activeEvent.participants.length === 0) {
+        participantsRows = `<tr><td colspan="4" style="padding: 15px; text-align: center; color: #777;">Учасників немає</td></tr>`;
+    } else {
+        activeEvent.participants.forEach(p => {
+            participantsRows += `
+                <tr>
+                    <td style="padding: 8px; border: 1px solid #ddd; font-weight: 500;">${escapeHtml(p.name)}</td>
+                    <td style="padding: 8px; border: 1px solid #ddd;">${escapeHtml(p.phone)}</td>
+                    <td style="padding: 8px; border: 1px solid #ddd; font-weight: 600;">${escapeHtml(p.status)}</td>
+                    <td style="padding: 8px; border: 1px solid #ddd; color: #555;">${escapeHtml(p.comment || '-')}</td>
+                </tr>
+            `;
+        });
+    }
+
+    printContainer.innerHTML = `
+        <div style="border-bottom: 2px solid #111; padding-bottom: 20px; margin-bottom: 20px;">
+            <div style="font-size: 10px; text-transform: uppercase; letter-spacing: 2px; color: #666; margin-bottom: 5px;">ProfTech Event Report</div>
+            <h1 style="font-size: 22px; font-weight: 700; margin: 0 0 10px 0;">${escapeHtml(activeEvent.title)}</h1>
+            <div style="font-size: 12px; color: #555;">
+                <strong>Дата проведення:</strong> ${activeEvent.date}
+            </div>
+            ${activeEvent.description ? `<div style="font-size: 12px; color: #666; margin-top: 5px;"><strong>Опис:</strong> ${escapeHtml(activeEvent.description)}</div>` : ''}
+        </div>
+
+        <div style="display: flex; gap: 15px; margin-bottom: 25px; background: #f8f8f8; padding: 12px; border-radius: 8px; border: 1px solid #eee; font-size: 11px;">
+            <div><strong>Всього:</strong> ${total}</div>
+            <div><strong>Офлайн:</strong> ${counts['планує бути офлайн']}</div>
+            <div><strong>Онлайн:</strong> ${counts['планує бути онлайн']}</div>
+            <div><strong>Недозвон:</strong> ${counts['недозвон']}</div>
+            <div><strong>Некор. номер:</strong> ${counts['некоректний номер']}</div>
+            <div><strong>Не буде:</strong> ${counts['не буде']}</div>
+        </div>
+
+        <h3 style="font-size: 13px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; border-bottom: 1px solid #ddd; padding-bottom: 6px;">Список учасників</h3>
+        
+        <table style="width: 100%; border-collapse: collapse; font-size: 11px;">
+            <thead>
+                <tr style="background: #f1f1f1; text-align: left;">
+                    <th style="padding: 8px; border: 1px solid #ddd;">ПІБ</th>
+                    <th style="padding: 8px; border: 1px solid #ddd;">Телефон</th>
+                    <th style="padding: 8px; border: 1px solid #ddd;">Статус</th>
+                    <th style="padding: 8px; border: 1px solid #ddd;">Коментар</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${participantsRows}
+            </tbody>
+        </table>
+
+        <div style="margin-top: 30px; font-size: 10px; color: #888; text-align: right; border-top: 1px solid #eee; padding-top: 10px;">
+            Згенеровано через ProfTech Tracker • ${new Date().toLocaleDateString()}
+        </div>
+    `;
+
+    document.body.appendChild(printContainer);
+
+    const opt = {
+        margin:       10,
+        filename:     `ProfTech_Report_${activeEvent.title.replace(/[^a-zA-Z0-9а-яА-Я]/g, '_')}.pdf`,
+        image:        { type: 'jpeg', quality: 0.98 },
+        html2canvas:  { scale: 2, useCORS: true, logging: false },
+        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    };
+
+    html2pdf().from(printContainer).set(opt).save().then(() => {
+        document.body.removeChild(printContainer);
+    }).catch(err => {
+        console.error("PDF generation error:", err);
+        document.body.removeChild(printContainer);
+    });
+}
+
+function escapeHtml(str) {
+    if (!str) return '';
+    return str.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;').replace('"', '&quot;').replace("'", '&#039;');
+}
+</script>
+</body>
+</html>
